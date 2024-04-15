@@ -1,0 +1,25 @@
+version: "3.3"
+
+x-proxy-common: &proxy-common
+  user: root
+  command: tail -f /dev/null
+  volumes: 
+    - ./etc/:/etc/nginx/conf.d
+    - ./modules:/home/openresty/modules
+
+services:
+  openresty_dev:
+    <<: *proxy-common
+    container_name: openresty_dev
+    ports:
+      - 80:80
+    build:
+      dockerfile: Dockerfile
+      target: openresty_dev
+    networks:
+      - external-net
+
+networks:
+  external-net:
+    name: external-net
+    external: true
