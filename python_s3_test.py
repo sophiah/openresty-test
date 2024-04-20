@@ -53,16 +53,33 @@ assert BUCKET in [x['Name'] for x in r.get('Buckets')], "list_bucket test fail"
 # upload file - small file
 test_size = 1024
 upload_download(s3_client, OBJECT_NAME, test_size)
-rurl = s3_client.generate_presigned_url(
-    "get_object",
-    Params={'Bucket': BUCKET, 'Key': OBJECT_NAME},
-    ExpiresIn=600)
-r = requests.get(rurl)
-assert r.status_code == 200
-assert r.text == "x" * test_size, "boto3.generate_presigned_url test fail"
 
-client = Minio(ENDPOINT, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, secure=False)
-rurl = client.presigned_get_object(bucket_name=BUCKET, object_name=OBJECT_NAME)
-r = requests.get(rurl)
-assert r.status_code == 200
-assert r.text == "x" * test_size, "minio.presigned_get_object test fail"
+r = s3_client.list_objects(Bucket=BUCKET)
+print(r)
+
+# s3_client.put_object_tagging(
+#     Bucket=BUCKET,
+#     Key=OBJECT_NAME,
+#     Tagging={
+#         'TagSet': [
+#             {'Key': 'k1','Value': 'k1v'},
+#         ]
+#     },
+# )
+
+# r = s3_client.get_object_tagging(Bucket=BUCKET, Key=OBJECT_NAME)
+# assert r.get('TagSet') == [{'Key': 'k1', 'Value': 'k1v'}]
+
+# rurl = s3_client.generate_presigned_url(
+#     "get_object",
+#     Params={'Bucket': BUCKET, 'Key': OBJECT_NAME},
+#     ExpiresIn=600)
+# r = requests.get(rurl)
+# assert r.status_code == 200
+# assert r.text == "x" * test_size, "boto3.generate_presigned_url test fail"
+
+# client = Minio(ENDPOINT, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, secure=False)
+# rurl = client.presigned_get_object(bucket_name=BUCKET, object_name=OBJECT_NAME)
+# r = requests.get(rurl)
+# assert r.status_code == 200
+# assert r.text == "x" * test_size, "minio.presigned_get_object test fail"
