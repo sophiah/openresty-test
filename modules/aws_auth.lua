@@ -70,8 +70,6 @@ local function create_signature(authInfo)
                         authInfo["access_date"] .. "/" .. authInfo["region"] .. "/" .. authInfo["service"] .. "/aws4_request\n" .. 
                         sha256(cReq);
 
-    ngx.log(ngx.ERR, cReq)
-    ngx.log(ngx.ERR, string_to_sign)
     -- signing key
     local secret = aws_cred[ authInfo["access_key_id"] ]
     local datekey = sign("AWS4" .. secret , authInfo["access_date"])
@@ -80,24 +78,17 @@ local function create_signature(authInfo)
     local signKey = sign(dateRegionServiceKey, "aws4_request")
    
     local signature = hmac_sha256(signKey, string_to_sign)
-    ngx.log(ngx.ERR, "sign compare ==> " .. authInfo["Org::Signature"] .. " ==> " .. signature)
+    -- ngx.log(ngx.ERR, "sign compare ==> " .. authInfo["Org::Signature"] .. " ==> " .. signature)
     return signature
 end
 
 local function _processCredential(str, authInfo)
     local tmp_idx = 0;
-    for subm in string.gmatch(str, "[^/]+") do
-        if tmp_idx == 0 then
-            authInfo["access_key_id"] = subm
-        elseif tmp_idx == 1 then
-            authInfo["access_date"] = subm
-        elseif tmp_idx == 2 then
-            authInfo["region"] = subm
-        elseif tmp_idx == 3 then
-            authInfo["service"] = subm
-        end
-        tmp_idx = tmp_idx + 1
-    end
+    local mnext = string.gmatch(str, "[^/]+")
+    authInfo["access_key_id"] = mnext()
+    authInfo["access_date"] = mnext()
+    authInfo["region"] = mnext()
+    authInfo["service"] = mnext()
 end
 
 local function _processSignHeaders(str, headers, authInfo)
@@ -111,13 +102,11 @@ end
 local function _processStandardHttp(authInfo)
     -- data from http requests
     authInfo["HTTP_METHOD"] = ngx.var.request_method
-    local x_uri = ngx.var.request_uri
-    for x in string.gmatch(x_uri, "[^?]+") do
-        authInfo["HTTP_RESOURCE"] = x
-        break
-    end
-    
     authInfo["REQUEST_PARAMS"] = normalized_param()
+
+    local x_uri = ngx.var.request_uri
+    local mnext = string.gmatch(x_uri, "[^?]+")
+    authInfo["HTTP_RESOURCE"] = mnext()
 end
 
 local function authWithHeaderAuth(headers)
@@ -141,7 +130,7 @@ local function authWithHeaderAuth(headers)
     end
     authInfo["x-amz-date"] = headers["x-amz-date"]
     authInfo["x-amz-content-sha256"] = headers["x-amz-content-sha256"]
-    _processStandardHttp(headers)
+    _processStandardHttp(authInfo)
 
     -- table_print(authInfo)
     local cal_sig = create_signature(authInfo)
@@ -171,6 +160,7 @@ local function authWithQParam(headers, args)
     end
 end
 
+
 function _M.revalidate()
     local headers = ngx.req.get_headers()
     local args = ngx.req.get_uri_args()
@@ -182,7 +172,12 @@ function _M.revalidate()
         authResult = authWithQParam(headers, args)
     end
 
-    return authResult
+    if authResult == false then
+        ngx.status = 403
+        ngx.say("Forbidden while re-validate")
+        return ngx.exit(403)
+    end
+
 end
 
 return _M

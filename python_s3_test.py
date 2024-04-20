@@ -2,6 +2,8 @@ import boto3
 import os
 import hashlib
 from minio import Minio
+import requests
+from botocore.config import Config
 
 def create_file(path, size):
     with open(path, "w") as f:
@@ -24,6 +26,7 @@ def upload_download(s3, path, size):
     os.remove(path)
     r = s3_client.get_object(Bucket=BUCKET, Key=path)
     contents = r['Body'].read()
+    assert contents.decode("utf-8") == "x" * size
     # print(contents)
 
 
@@ -32,26 +35,34 @@ AWS_ACCESS_KEY_ID="minioadmin"
 AWS_SECRET_ACCESS_KEY="minioadmin"
 BUCKET = "test-bucket"
 
+OBJECT_NAME = "test-object-dest"
+
 session = boto3.session.Session()
 s3_client = session.client(
     service_name='s3',
     aws_access_key_id=AWS_ACCESS_KEY_ID,
     aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
     endpoint_url="http://" + ENDPOINT,
+    config=Config(signature_version='s3v4')
 )
 
 # list bucket
 r = s3_client.list_buckets()
-print(r.get('Buckets'))
+assert BUCKET in [x['Name'] for x in r.get('Buckets')], "list_bucket test fail"
 
 # upload file - small file
-upload_download(s3_client, "file-1k", 1024)
-r = s3_client.generate_presigned_url(
+test_size = 1024
+upload_download(s3_client, OBJECT_NAME, test_size)
+rurl = s3_client.generate_presigned_url(
     "get_object",
-    Params={'Bucket': BUCKET, 'Key': "file-1k"},
+    Params={'Bucket': BUCKET, 'Key': OBJECT_NAME},
     ExpiresIn=600)
-print(r)
+r = requests.get(rurl)
+assert r.status_code == 200
+assert r.text == "x" * test_size, "boto3.generate_presigned_url test fail"
 
 client = Minio(ENDPOINT, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, secure=False)
-r = client.presigned_get_object(bucket_name=BUCKET, object_name="file-1k")
-print(r)
+rurl = client.presigned_get_object(bucket_name=BUCKET, object_name=OBJECT_NAME)
+r = requests.get(rurl)
+assert r.status_code == 200
+assert r.text == "x" * test_size, "minio.presigned_get_object test fail"
