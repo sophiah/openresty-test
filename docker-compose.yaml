@@ -15,6 +15,7 @@ services:
 
   cache1:
     container_name: cache1
+    user: root
     ports:
       - 80:80
     expose:
@@ -23,11 +24,12 @@ services:
       dockerfile: Dockerfile
       target: openresty
     volumes: 
-      - ./etc/cache-server.conf:/etc/nginx/conf.d/default.conf
+      - ./etc/cache-server-mem.conf:/etc/nginx/conf.d/default.conf
     networks:
       - external-net
   cache2:
     container_name: cache2
+    user: root
     ports:
       - 81:80
     expose:
@@ -36,10 +38,11 @@ services:
       dockerfile: Dockerfile
       target: openresty
     volumes: 
-      - ./etc/cache-server.conf:/etc/nginx/conf.d/default.conf
+      - ./etc/cache-server-mem.conf:/etc/nginx/conf.d/default.conf
     networks:
       - external-net
   cache3:
+    user: root
     container_name: cache3
     ports:
       - 82:80
@@ -49,7 +52,7 @@ services:
       dockerfile: Dockerfile
       target: openresty
     volumes: 
-      - ./etc/cache-server.conf:/etc/nginx/conf.d/default.conf
+      - ./etc/cache-server-mem.conf:/etc/nginx/conf.d/default.conf
     networks:
       - external-net
 

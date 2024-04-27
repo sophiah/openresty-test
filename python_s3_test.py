@@ -55,7 +55,7 @@ test_size = 1024
 upload_download(s3_client, OBJECT_NAME, test_size)
 
 r = s3_client.list_objects(Bucket=BUCKET)
-print(r)
+assert "test-object-dest" in [x.get("Key") for x in r.get('Contents')]
 
 s3_client.put_object_tagging(
     Bucket=BUCKET,
