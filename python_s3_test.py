@@ -29,6 +29,22 @@ def upload_download(s3, path, size):
     assert contents.decode("utf-8") == "x" * size
     # print(contents)
 
+def upload_download_image(s3, srcPath):
+    org_md5 = get_md5(srcPath)
+    s3.upload_file(srcPath, BUCKET, srcPath)
+    with open(srcPath, "rb") as f:
+        s3_client.put_object(Body=f, Bucket=BUCKET, Key=srcPath)
+
+    s3_client.download_file(BUCKET, srcPath, srcPath + ".downloaded")
+    aft_md5 = get_md5(srcPath + ".downloaded")
+    assert aft_md5 == org_md5
+    os.remove(srcPath + ".downloaded")
+
+    ## test cached
+    s3_client.download_file(BUCKET, srcPath, srcPath + ".downloaded")
+    aft_md5 = get_md5(srcPath + ".downloaded")
+    assert aft_md5 == org_md5
+    os.remove(srcPath + ".downloaded")
 
 ENDPOINT = "localhost:80"
 AWS_ACCESS_KEY_ID="minioadmin"
@@ -53,6 +69,7 @@ assert BUCKET in [x['Name'] for x in r.get('Buckets')], "list_bucket test fail"
 # upload file - small file
 test_size = 1024
 upload_download(s3_client, OBJECT_NAME, test_size)
+upload_download_image(s3_client, "test-image.png")
 
 r = s3_client.list_objects(Bucket=BUCKET)
 assert "test-object-dest" in [x.get("Key") for x in r.get('Contents')]
