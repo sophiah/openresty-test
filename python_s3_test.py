@@ -5,6 +5,8 @@ from minio import Minio
 import requests
 from botocore.config import Config
 
+import wget
+
 def create_file(path, size):
     with open(path, "w") as f:
         f.write("x" * size)
@@ -29,7 +31,7 @@ def upload_download(s3, path, size):
     assert contents.decode("utf-8") == "x" * size
     # print(contents)
 
-def upload_download_image(s3, srcPath):
+def upload_download_file(s3, srcPath):
     org_md5 = get_md5(srcPath)
     s3.upload_file(srcPath, BUCKET, srcPath)
     with open(srcPath, "rb") as f:
@@ -69,7 +71,7 @@ assert BUCKET in [x['Name'] for x in r.get('Buckets')], "list_bucket test fail"
 # upload file - small file
 test_size = 1024
 upload_download(s3_client, OBJECT_NAME, test_size)
-upload_download_image(s3_client, "test-image.png")
+upload_download_file(s3_client, "test-image.png")
 
 r = s3_client.list_objects(Bucket=BUCKET)
 assert "test-object-dest" in [x.get("Key") for x in r.get('Contents')]
@@ -100,3 +102,9 @@ rurl = client.presigned_get_object(bucket_name=BUCKET, object_name=OBJECT_NAME)
 r = requests.get(rurl)
 assert r.status_code == 200
 assert r.text == "x" * test_size, "minio.presigned_get_object test fail"
+
+large_file = "https://github.com/openresty/openresty/releases/download/v1.25.3.1/openresty-1.25.3.1.tar.gz"
+dest = "large.tgz"
+wget.download(large_file, out=dest)
+upload_download_file(s3_client, dest)
+os.remove(dest)
